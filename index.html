@@ -3,7 +3,127 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>Student Result Management</title>
+    <link rel="stylesheet" href="style.css" />
   </head>
-  <body></body>
+  <body>
+    <div class="container">
+      <header class="app-header">
+        <h1>Result Management System</h1>
+        <p class="subtitle">Configure grades and track student performance</p>
+      </header>
+
+      <div class="grid-layout">
+        <div class="card">
+          <h2>1. Set Grade Ranges</h2>
+          <div class="form-group">
+            <div class="input-row">
+              <div class="input-wrapper">
+                <label for="minScore">Min Score</label>
+                <input type="number" id="minScore" placeholder="e.g., 90" />
+              </div>
+              <div class="input-wrapper">
+                <label for="maxScore">Max Score</label>
+                <input type="number" id="maxScore" placeholder="e.g., 100" />
+              </div>
+            </div>
+            <div class="input-wrapper">
+              <label for="gradeLetter">Grade Letter</label>
+              <input
+                type="text"
+                id="gradeLetter"
+                placeholder="e.g., A"
+                maxlength="2"
+              />
+            </div>
+            <button id="addRuleBtn" class="btn-primary">Add Grade Rule</button>
+          </div>
+          <div class="active-rules">
+            <h3>Active Rules</h3>
+            <ul id="ruleList"></ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>2. Add Student Result</h2>
+          <div class="form-group">
+            <div class="input-wrapper">
+              <label for="studentName">Student Name</label>
+              <input
+                type="text"
+                id="studentName"
+                placeholder="Enter full name"
+              />
+            </div>
+            <div class="input-wrapper">
+              <label for="studentScore">Score (0-100)</label>
+              <input
+                type="number"
+                id="studentScore"
+                placeholder="Enter score"
+                min="0"
+                max="100"
+              />
+            </div>
+            <button id="addStudentBtn" class="btn-primary">Add Student</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card table-card">
+        <div class="table-header">
+          <h2>Student Results</h2>
+          <div class="header-buttons">
+            <button id="exportCsvBtn" class="btn-success">Export CSV</button>
+            <button id="clearAllBtn" class="btn-clear">Clear All</button>
+          </div>
+        </div>
+
+        <div class="analytics-banner">
+          <div class="stat-box">
+            <h4>Class Avg</h4>
+            <p id="avgScore">0</p>
+          </div>
+          <div class="stat-box">
+            <h4>Highest</h4>
+            <p id="highScore">0</p>
+          </div>
+          <div class="stat-box">
+            <h4>Lowest</h4>
+            <p id="lowScore">0</p>
+          </div>
+        </div>
+
+        <div class="search-container">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="🔍 Search by student name..."
+          />
+        </div>
+
+        <div class="table-responsive">
+          <table id="resultsTable">
+            <thead>
+              <tr>
+                <th id="sortName" class="sortable">
+                  Name <span class="sort-icon">↕</span>
+                </th>
+                <th id="sortScore" class="sortable">
+                  Score <span class="sort-icon">↕</span>
+                </th>
+                <th id="sortGrade" class="sortable">
+                  Grade <span class="sort-icon">↕</span>
+                </th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
 </html>
