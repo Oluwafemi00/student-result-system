@@ -1,6 +1,5 @@
 // --- STATE INITIALIZATION WITH LOCAL STORAGE ---
 
-// Try to load existing rules from local storage, otherwise use default A-F scale
 let gradeRules = JSON.parse(localStorage.getItem("studentMgmtRules")) || [
   { id: 1, min: 90, max: 100, grade: "A" },
   { id: 2, min: 80, max: 89, grade: "B" },
@@ -9,7 +8,6 @@ let gradeRules = JSON.parse(localStorage.getItem("studentMgmtRules")) || [
   { id: 5, min: 0, max: 59, grade: "F" },
 ];
 
-// Try to load existing students from local storage, otherwise use empty array
 let students = JSON.parse(localStorage.getItem("studentMgmtData")) || [];
 
 // --- LOCAL STORAGE HELPERS ---
@@ -267,7 +265,7 @@ exportCsvBtn.addEventListener("click", () => {
 
   // Loop through students and add their data as rows
   students.forEach((student) => {
-    // We use quotes around the name in case they have a comma in their name
+    // Use quotes around the name in case they have a comma in their name
     csvContent += `"${student.name}",${student.score},${student.grade}\n`;
   });
 
