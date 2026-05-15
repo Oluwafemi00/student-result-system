@@ -3,123 +3,275 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Student Result Management</title>
+    <title>Gradex — Result Management</title>
     <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
-    <div class="container">
-      <header class="app-header">
-        <h1>Result Management System</h1>
-        <p class="subtitle">Configure grades and track student performance</p>
-      </header>
+    <!-- TOPBAR -->
+    <nav class="topbar">
+      <div class="topbar-inner">
+        <div class="logo">
+          <span class="logo-mark">G</span>
+          <span class="logo-text">Gradex <em>Pro</em></span>
+        </div>
+        <div class="topbar-meta">
+          <span id="student-count-badge">0 students</span>
+          <button class="btn-export" id="exportCsvBtn">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Export CSV
+          </button>
+        </div>
+      </div>
+    </nav>
 
-      <div class="grid-layout">
-        <div class="card">
-          <h2>1. Set Grade Ranges</h2>
-          <div class="form-group">
-            <div class="input-row">
-              <div class="input-wrapper">
-                <label for="minScore">Min Score</label>
-                <input type="number" id="minScore" placeholder="e.g., 90" />
-              </div>
-              <div class="input-wrapper">
-                <label for="maxScore">Max Score</label>
-                <input type="number" id="maxScore" placeholder="e.g., 100" />
-              </div>
+    <div class="page">
+      <!-- HERO -->
+      <div class="hero">
+        <h1 class="hero-title">Result Management<br /><em>System</em></h1>
+        <p class="hero-sub">
+          Configure grade boundaries · Track student performance · Export
+          reports
+        </p>
+      </div>
+
+      <!-- ANALYTICS STRIP -->
+      <div class="analytics-strip">
+        <div class="stat-card">
+          <p class="stat-label">Class Average</p>
+          <p class="stat-value" id="avgScore">—</p>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-card">
+          <p class="stat-label">Highest Score</p>
+          <p class="stat-value accent" id="highScore">—</p>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-card">
+          <p class="stat-label">Lowest Score</p>
+          <p class="stat-value muted" id="lowScore">—</p>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-card">
+          <p class="stat-label">Total Students</p>
+          <p class="stat-value" id="totalStudents">0</p>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-card">
+          <p class="stat-label">Pass Rate</p>
+          <p class="stat-value" id="passRate">—</p>
+        </div>
+      </div>
+
+      <!-- TWO COLUMN FORMS -->
+      <div class="form-grid">
+        <!-- GRADE RULES -->
+        <div class="panel">
+          <div class="panel-head">
+            <span class="step-badge">01</span>
+            <div>
+              <h2 class="panel-title">Grade Boundaries</h2>
+              <p class="panel-sub">
+                Define score ranges and corresponding grades
+              </p>
             </div>
-            <div class="input-wrapper">
-              <label for="gradeLetter">Grade Letter</label>
-              <input
-                type="text"
-                id="gradeLetter"
-                placeholder="e.g., A"
-                maxlength="2"
-              />
-            </div>
-            <button id="addRuleBtn" class="btn-primary">Add Grade Rule</button>
           </div>
-          <div class="active-rules">
-            <h3>Active Rules</h3>
-            <ul id="ruleList"></ul>
+
+          <div class="field-group">
+            <div class="field-row">
+              <div class="field">
+                <label>Min Score</label>
+                <input type="number" id="minScore" placeholder="e.g. 90" />
+              </div>
+              <div class="field">
+                <label>Max Score</label>
+                <input type="number" id="maxScore" placeholder="e.g. 100" />
+              </div>
+              <div class="field field-sm">
+                <label>Grade</label>
+                <input
+                  type="text"
+                  id="gradeLetter"
+                  placeholder="A"
+                  maxlength="2"
+                />
+              </div>
+            </div>
+            <button class="btn-primary" id="addRuleBtn">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add Rule
+            </button>
+          </div>
+
+          <div class="rules-section">
+            <p class="rules-label">Active Boundaries</p>
+            <ul class="rule-list" id="ruleList"></ul>
           </div>
         </div>
 
-        <div class="card">
-          <h2>2. Add Student Result</h2>
-          <div class="form-group">
-            <div class="input-wrapper">
-              <label for="studentName">Student Name</label>
+        <!-- ADD STUDENT -->
+        <div class="panel">
+          <div class="panel-head">
+            <span class="step-badge">02</span>
+            <div>
+              <h2 class="panel-title">Add Student</h2>
+              <p class="panel-sub">
+                Enter student details and record their score
+              </p>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <div class="field">
+              <label>Full Name</label>
               <input
                 type="text"
                 id="studentName"
                 placeholder="Enter full name"
+                autocomplete="off"
               />
             </div>
-            <div class="input-wrapper">
-              <label for="studentScore">Score (0-100)</label>
-              <input
-                type="number"
-                id="studentScore"
-                placeholder="Enter score"
-                min="0"
-                max="100"
-              />
+            <div class="field">
+              <label>Score <span class="label-note">(0 – 100)</span></label>
+              <div class="score-input-wrap">
+                <input
+                  type="number"
+                  id="studentScore"
+                  placeholder="0"
+                  min="0"
+                  max="100"
+                />
+                <span class="score-preview" id="scorePreview">—</span>
+              </div>
             </div>
-            <button id="addStudentBtn" class="btn-primary">Add Student</button>
+            <button class="btn-primary" id="addStudentBtn">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add Student
+            </button>
+          </div>
+
+          <!-- Grade distribution mini chart -->
+          <div class="dist-section">
+            <p class="rules-label">Grade Distribution</p>
+            <div class="dist-bars" id="distBars">
+              <p class="dist-empty">Add students to see distribution</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="card table-card">
-        <div class="table-header">
-          <h2>Student Results</h2>
-          <div class="header-buttons">
-            <button id="exportCsvBtn" class="btn-success">Export CSV</button>
-            <button id="clearAllBtn" class="btn-clear">Clear All</button>
+      <!-- RESULTS TABLE -->
+      <div class="table-panel">
+        <div class="table-top">
+          <h2 class="panel-title">Student Results</h2>
+          <div class="table-actions">
+            <div class="search-wrap">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Search students…"
+              />
+            </div>
+            <button class="btn-ghost" id="clearAllBtn">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+              </svg>
+              Clear All
+            </button>
           </div>
         </div>
 
-        <div class="analytics-banner">
-          <div class="stat-box">
-            <h4>Class Avg</h4>
-            <p id="avgScore">0</p>
-          </div>
-          <div class="stat-box">
-            <h4>Highest</h4>
-            <p id="highScore">0</p>
-          </div>
-          <div class="stat-box">
-            <h4>Lowest</h4>
-            <p id="lowScore">0</p>
-          </div>
-        </div>
-
-        <div class="search-container">
-          <input
-            type="text"
-            id="searchInput"
-            placeholder="🔍 Search by student name..."
-          />
-        </div>
-
-        <div class="table-responsive">
-          <table id="resultsTable">
+        <div class="table-scroll">
+          <table class="results-table">
             <thead>
               <tr>
-                <th id="sortName" class="sortable">
-                  Name <span class="sort-icon">↕</span>
+                <th class="th-num">#</th>
+                <th class="sortable" id="sortName">
+                  Name <span class="sort-arrow" id="arrow-name">↕</span>
                 </th>
-                <th id="sortScore" class="sortable">
-                  Score <span class="sort-icon">↕</span>
+                <th class="sortable" id="sortScore">
+                  Score <span class="sort-arrow" id="arrow-score">↕</span>
                 </th>
-                <th id="sortGrade" class="sortable">
-                  Grade <span class="sort-icon">↕</span>
-                </th>
+                <th>Grade</th>
+                <th>Performance</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody id="tableBody"></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal-box">
+        <p class="modal-msg" id="modalMsg">Are you sure?</p>
+        <div class="modal-btns">
+          <button class="btn-modal-cancel" id="modalCancel">Cancel</button>
+          <button class="btn-modal-confirm" id="modalConfirm">Confirm</button>
         </div>
       </div>
     </div>

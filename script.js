@@ -1,6 +1,10 @@
-// --- STATE INITIALIZATION WITH LOCAL STORAGE ---
+// ============================================================
+//  GRADEX PRO — Student Result Management System
+//  script.js
+// ============================================================
 
-let gradeRules = JSON.parse(localStorage.getItem("studentMgmtRules")) || [
+// ─── STATE ───────────────────────────────────────────────────
+let gradeRules = JSON.parse(localStorage.getItem("gradexRules")) || [
   { id: 1, min: 90, max: 100, grade: "A" },
   { id: 2, min: 80, max: 89, grade: "B" },
   { id: 3, min: 70, max: 79, grade: "C" },
@@ -8,77 +12,164 @@ let gradeRules = JSON.parse(localStorage.getItem("studentMgmtRules")) || [
   { id: 5, min: 0, max: 59, grade: "F" },
 ];
 
-let students = JSON.parse(localStorage.getItem("studentMgmtData")) || [];
+let students = JSON.parse(localStorage.getItem("gradexStudents")) || [];
 
-// --- LOCAL STORAGE HELPERS ---
+let sortColumn = null;
+let sortAscending = true;
 
+// ─── PERSIST ─────────────────────────────────────────────────
 function saveRules() {
-  localStorage.setItem("studentMgmtRules", JSON.stringify(gradeRules));
+  localStorage.setItem("gradexRules", JSON.stringify(gradeRules));
 }
-
 function saveStudents() {
-  localStorage.setItem("studentMgmtData", JSON.stringify(students));
+  localStorage.setItem("gradexStudents", JSON.stringify(students));
 }
 
-// --- DOM ELEMENTS ---
+// ─── DOM REFS ────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
 
-const minScoreInput = document.getElementById("minScore");
-const maxScoreInput = document.getElementById("maxScore");
-const gradeLetterInput = document.getElementById("gradeLetter");
-const addRuleBtn = document.getElementById("addRuleBtn");
-const ruleList = document.getElementById("ruleList");
+const minScoreInput = $("minScore");
+const maxScoreInput = $("maxScore");
+const gradeLetterInput = $("gradeLetter");
+const addRuleBtn = $("addRuleBtn");
+const ruleListEl = $("ruleList");
 
-const studentNameInput = document.getElementById("studentName");
-const studentScoreInput = document.getElementById("studentScore");
-const addStudentBtn = document.getElementById("addStudentBtn");
-const tableBody = document.getElementById("tableBody");
-const searchInput = document.getElementById("searchInput");
-const avgScoreEl = document.getElementById("avgScore");
-const highScoreEl = document.getElementById("highScore");
-const lowScoreEl = document.getElementById("lowScore");
+const studentNameInput = $("studentName");
+const studentScoreInput = $("studentScore");
+const scorePreviewEl = $("scorePreview");
+const addStudentBtn = $("addStudentBtn");
 
-// --- GRADE RULE LOGIC ---
+const searchInput = $("searchInput");
+const tableBody = $("tableBody");
+const avgScoreEl = $("avgScore");
+const highScoreEl = $("highScore");
+const lowScoreEl = $("lowScore");
+const totalStudentsEl = $("totalStudents");
+const passRateEl = $("passRate");
+const studentBadgeEl = $("student-count-badge");
+const distBarsEl = $("distBars");
 
-// Render Grade Rules
+const exportCsvBtn = $("exportCsvBtn");
+const clearAllBtn = $("clearAllBtn");
+
+const toastEl = $("toast");
+const modalOverlay = $("modalOverlay");
+const modalMsg = $("modalMsg");
+const modalConfirmBtn = $("modalConfirm");
+const modalCancelBtn = $("modalCancel");
+
+// ─── TOAST ───────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = "") {
+  clearTimeout(toastTimer);
+  toastEl.textContent = msg;
+  toastEl.className = "toast" + (type ? " " + type : "") + " show";
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2800);
+}
+
+// ─── CONFIRM MODAL ───────────────────────────────────────────
+function showConfirm(message, onConfirm) {
+  modalMsg.textContent = message;
+  modalOverlay.classList.add("show");
+
+  const cleanup = () => modalOverlay.classList.remove("show");
+
+  modalConfirmBtn.onclick = () => {
+    cleanup();
+    onConfirm();
+  };
+  modalCancelBtn.onclick = cleanup;
+}
+
+// ─── GRADE HELPERS ───────────────────────────────────────────
+function getGradeFromScore(score) {
+  const sorted = [...gradeRules].sort((a, b) => b.max - a.max);
+  for (const rule of sorted) {
+    if (score >= rule.min && score <= rule.max) return rule.grade;
+  }
+  return "N/A";
+}
+
+function getGradeClass(grade) {
+  const map = {
+    A: "grade-A",
+    B: "grade-B",
+    C: "grade-C",
+    D: "grade-D",
+    F: "grade-F",
+  };
+  return map[grade] || "grade-NA";
+}
+
+function getPerformanceColor(score) {
+  if (score >= 90) return "#4DB87A";
+  if (score >= 75) return "#5B8FD4";
+  if (score >= 60) return "#C9A84C";
+  if (score >= 45) return "#C8963C";
+  return "#D45C5C";
+}
+
+// ─── RENDER RULES ────────────────────────────────────────────
 function renderRules() {
-  ruleList.innerHTML = "";
-  const sortedRules = [...gradeRules].sort((a, b) => b.max - a.max);
+  ruleListEl.innerHTML = "";
 
-  sortedRules.forEach((rule) => {
+  if (gradeRules.length === 0) {
+    ruleListEl.innerHTML =
+      '<li class="rule-empty">No grade rules defined.</li>';
+    return;
+  }
+
+  const sorted = [...gradeRules].sort((a, b) => b.max - a.max);
+  sorted.forEach((rule) => {
     const li = document.createElement("li");
+    li.className = "rule-item";
     li.innerHTML = `
-            <span>Score: <strong>${rule.min} - ${rule.max}</strong> &rarr; Grade: <strong>${rule.grade}</strong></span>
-            <button class="btn-danger" onclick="deleteRule(${rule.id})">Remove</button>
-        `;
-    ruleList.appendChild(li);
+      <span class="rule-grade">${rule.grade}</span>
+      <span class="rule-range"><strong>${rule.min}</strong> – <strong>${rule.max}</strong> pts</span>
+      <button class="btn-rule-del" title="Remove rule" data-id="${rule.id}">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    `;
+    ruleListEl.appendChild(li);
+  });
+
+  ruleListEl.querySelectorAll(".btn-rule-del").forEach((btn) => {
+    btn.addEventListener("click", () => deleteRule(parseInt(btn.dataset.id)));
   });
 }
 
-// Add New Rule
+// ─── ADD RULE ────────────────────────────────────────────────
 addRuleBtn.addEventListener("click", () => {
   const min = parseFloat(minScoreInput.value);
   const max = parseFloat(maxScoreInput.value);
   const grade = gradeLetterInput.value.trim().toUpperCase();
 
   if (isNaN(min) || isNaN(max) || !grade) {
-    alert("Please fill in Min Score, Max Score, and Grade Letter.");
+    showToast("Fill in min, max and grade letter.", "error");
     return;
   }
-
   if (min > max) {
-    alert("Min score cannot be greater than Max score.");
+    showToast("Min score cannot exceed max score.", "error");
+    return;
+  }
+  if (min < 0 || max > 100) {
+    showToast("Scores must be between 0 and 100.", "error");
     return;
   }
 
-  const newRule = {
-    id: Date.now(),
-    min: min,
-    max: max,
-    grade: grade,
-  };
+  // Check for overlap
+  const overlaps = gradeRules.some(
+    (r) => min <= r.max && max >= r.min && r.grade !== grade,
+  );
+  if (overlaps) {
+    showToast("Score range overlaps an existing rule.", "error");
+    return;
+  }
 
-  gradeRules.push(newRule);
-  saveRules(); // Save to local storage
+  gradeRules.push({ id: Date.now(), min, max, grade });
+  saveRules();
 
   minScoreInput.value = "";
   maxScoreInput.value = "";
@@ -86,280 +177,334 @@ addRuleBtn.addEventListener("click", () => {
 
   renderRules();
   recalculateAllGrades();
+  showToast("Grade rule added.", "success");
 });
 
-// Delete Rule
+// ─── DELETE RULE ─────────────────────────────────────────────
 function deleteRule(id) {
-  gradeRules = gradeRules.filter((rule) => rule.id !== id);
-  saveRules(); // Save to local storage
+  gradeRules = gradeRules.filter((r) => r.id !== id);
+  saveRules();
   renderRules();
   recalculateAllGrades();
+  showToast("Rule removed.");
 }
 
-// Calculate Grade based on current rules
-function getGradeFromScore(score) {
-  const sortedRules = [...gradeRules].sort((a, b) => b.max - a.max);
-
-  for (let rule of sortedRules) {
-    if (score >= rule.min && score <= rule.max) {
-      return rule.grade;
-    }
-  }
-  return "N/A (Out of Range)";
-}
-
-// --- STUDENT DATA LOGIC ---
-
-// Render Student Table (UPDATED WITH EMPTY STATE)
-function renderStudents() {
-  tableBody.innerHTML = "";
-
-  const searchTerm = searchInput.value.trim().toLowerCase();
-
-  const filteredStudents = students.filter((student) =>
-    student.name.toLowerCase().includes(searchTerm),
-  );
-
-  // --- NEW: EMPTY STATE LOGIC ---
-  if (filteredStudents.length === 0) {
-    const tr = document.createElement("tr");
-
-    // Determine which message to show based on whether the main array is empty or just the search results
-    const message =
-      students.length === 0
-        ? "📝 No students added yet. Use the form above to add your first student!"
-        : "🔍 No matching students found.";
-
-    // colspan="4" makes this single cell stretch across all 4 columns of our table
-    tr.innerHTML = `<td colspan="4" class="empty-state">${message}</td>`;
-    tableBody.appendChild(tr);
+// ─── SCORE LIVE PREVIEW ──────────────────────────────────────
+studentScoreInput.addEventListener("input", () => {
+  const val = parseFloat(studentScoreInput.value);
+  if (!isNaN(val) && val >= 0 && val <= 100) {
+    scorePreviewEl.textContent = getGradeFromScore(val);
   } else {
-    // --- EXISTING RENDER LOGIC ---
-    filteredStudents.forEach((student) => {
-      const originalIndex = students.indexOf(student);
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-                <td>${student.name}</td>
-                <td>${student.score}</td>
-                <td><strong>${student.grade}</strong></td>
-                <td><button class="btn-danger" onclick="deleteStudent(${originalIndex})">Delete</button></td>
-            `;
-      tableBody.appendChild(tr);
-    });
+    scorePreviewEl.textContent = "—";
   }
+});
 
-  // Call the analytics update every time the table is drawn
-  updateAnalytics();
-}
+// ─── ADD STUDENT ─────────────────────────────────────────────
+addStudentBtn.addEventListener("click", addStudent);
+studentNameInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") addStudent();
+});
+studentScoreInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") addStudent();
+});
 
-// Trigger re-render every time the user types in the search box
-searchInput.addEventListener("input", renderStudents);
-
-// Add New Student (WITH STRICT VALIDATION)
-addStudentBtn.addEventListener("click", () => {
-  // .trim() removes accidental spaces before or after the name
+function addStudent() {
   const name = studentNameInput.value.trim();
   const score = parseFloat(studentScoreInput.value);
 
-  // 1. Check for empty inputs
   if (!name) {
-    alert("Error: Please enter a student name.");
+    showToast("Please enter a student name.", "error");
     return;
   }
-
   if (isNaN(score)) {
-    alert("Error: Please enter a valid score.");
+    showToast("Please enter a valid score.", "error");
     return;
   }
-
-  // 2. Check for realistic score range
   if (score < 0 || score > 100) {
-    alert("Error: Score must be between 0 and 100.");
+    showToast("Score must be between 0 and 100.", "error");
     return;
   }
 
-  // 3. Check for duplicate names (Case-insensitive)
-  // .some() checks if any student in the array matches the condition
   const isDuplicate = students.some(
-    (student) => student.name.toLowerCase() === name.toLowerCase(),
+    (s) => s.name.toLowerCase() === name.toLowerCase(),
   );
-
   if (isDuplicate) {
-    alert(`Error: A student named "${name}" already exists in the system.`);
+    showToast(`"${name}" already exists in the system.`, "error");
     return;
   }
 
-  // If all validations pass, calculate the grade and save
   const grade = getGradeFromScore(score);
+  students.push({ id: Date.now(), name, score, grade });
+  saveStudents();
 
-  students.push({
-    name: name,
-    score: score,
-    grade: grade,
-  });
-
-  saveStudents(); // Save to local storage
-
-  // Clear inputs and set focus back to the name field for fast data entry
   studentNameInput.value = "";
   studentScoreInput.value = "";
+  scorePreviewEl.textContent = "—";
   studentNameInput.focus();
 
   renderStudents();
-});
-
-// Delete Student
-function deleteStudent(index) {
-  students.splice(index, 1);
-  saveStudents(); // Save to local storage
-  renderStudents();
+  showToast(`${name} added successfully.`, "success");
 }
 
-// Recalculate grades if rules change
+// ─── DELETE STUDENT ──────────────────────────────────────────
+function deleteStudent(id) {
+  showConfirm("Delete this student's record? This cannot be undone.", () => {
+    students = students.filter((s) => s.id !== id);
+    saveStudents();
+    renderStudents();
+    showToast("Student removed.");
+  });
+}
+
+// ─── RECALCULATE GRADES ──────────────────────────────────────
 function recalculateAllGrades() {
-  students.forEach((student) => {
-    student.grade = getGradeFromScore(student.score);
+  students.forEach((s) => {
+    s.grade = getGradeFromScore(s.score);
   });
-  saveStudents(); // Save updated grades to local storage
+  saveStudents();
   renderStudents();
 }
 
-// --- CLEAR ALL LOGIC ---
+// ─── SORT ────────────────────────────────────────────────────
+$("sortName").addEventListener("click", () => applySort("name"));
+$("sortScore").addEventListener("click", () => applySort("score"));
 
-const clearAllBtn = document.getElementById("clearAllBtn");
-
-clearAllBtn.addEventListener("click", () => {
-  // Check if there are actually students to delete
-  if (students.length === 0) {
-    alert("The table is already empty.");
-    return;
-  }
-
-  // Ask for confirmation before wiping data
-  const confirmClear = confirm(
-    "Are you sure you want to delete ALL student results? This cannot be undone.",
-  );
-
-  if (confirmClear) {
-    students = []; // Empty the array
-    saveStudents(); // Update local storage with the empty array
-    renderStudents(); // Re-render the empty table
-  }
-});
-
-// --- EXPORT TO CSV LOGIC ---
-
-const exportCsvBtn = document.getElementById("exportCsvBtn");
-
-exportCsvBtn.addEventListener("click", () => {
-  // 1. Check if there is data to export
-  if (students.length === 0) {
-    alert("There is no student data to export.");
-    return;
-  }
-
-  // 2. Create the CSV content
-  // Start with the column headers
-  let csvContent = "Name,Score,Grade\n";
-
-  // Loop through students and add their data as rows
-  students.forEach((student) => {
-    // Use quotes around the name in case they have a comma in their name
-    csvContent += `"${student.name}",${student.score},${student.grade}\n`;
-  });
-
-  // 3. Create a Blob (Binary Large Object) to hold the file data
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-
-  // 4. Create a temporary hidden link to trigger the download
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-
-  link.setAttribute("href", url);
-  link.setAttribute("download", "student_results.csv"); // Set the default filename
-  link.style.visibility = "hidden";
-
-  document.body.appendChild(link);
-  link.click(); // Simulate a click to download
-  document.body.removeChild(link); // Clean up the temporary link
-});
-
-// --- SORTING LOGIC ---
-
-// State variables for sorting
-let currentSortColumn = null;
-let isAscending = true;
-
-function sortTableData(column) {
-  // If clicking the same column, toggle the direction. Otherwise, default to Ascending.
-  if (currentSortColumn === column) {
-    isAscending = !isAscending;
+function applySort(col) {
+  if (sortColumn === col) {
+    sortAscending = !sortAscending;
   } else {
-    currentSortColumn = column;
-    isAscending = true;
+    sortColumn = col;
+    sortAscending = true;
   }
 
-  // Sort the main students array
-  students.sort((a, b) => {
-    let valueA = a[column];
-    let valueB = b[column];
-
-    // If we are sorting text (Name or Grade), convert to lowercase for accurate comparison
-    if (typeof valueA === "string") {
-      valueA = valueA.toLowerCase();
-      valueB = valueB.toLowerCase();
-
-      if (valueA < valueB) return isAscending ? -1 : 1;
-      if (valueA > valueB) return isAscending ? 1 : -1;
-      return 0;
-    } else {
-      // If we are sorting numbers (Score), use simple subtraction
-      return isAscending ? valueA - valueB : valueB - valueA;
-    }
+  // Reset arrows
+  ["name", "score"].forEach((c) => {
+    const el = $("arrow-" + c);
+    el.className = "sort-arrow";
+    el.textContent = "↕";
   });
 
-  saveStudents(); // Save the new sorted order to local storage
-  renderStudents(); // Redraw the table with the new order
+  const arrow = $("arrow-" + col);
+  arrow.className = "sort-arrow " + (sortAscending ? "asc" : "desc");
+  arrow.textContent = "";
+
+  renderStudents();
 }
 
-// Attach event listeners to the headers
-document
-  .getElementById("sortName")
-  .addEventListener("click", () => sortTableData("name"));
-document
-  .getElementById("sortScore")
-  .addEventListener("click", () => sortTableData("score"));
-document
-  .getElementById("sortGrade")
-  .addEventListener("click", () => sortTableData("grade"));
+function getSortedStudents(list) {
+  if (!sortColumn) return list;
+  return [...list].sort((a, b) => {
+    let va = a[sortColumn],
+      vb = b[sortColumn];
+    if (typeof va === "string") {
+      va = va.toLowerCase();
+      vb = vb.toLowerCase();
+      return sortAscending ? va.localeCompare(vb) : vb.localeCompare(va);
+    }
+    return sortAscending ? va - vb : vb - va;
+  });
+}
 
-// --- ANALYTICS LOGIC (UPDATED & BULLETPROOF) ---
+// ─── RENDER STUDENTS ─────────────────────────────────────────
+searchInput.addEventListener("input", renderStudents);
+
+function renderStudents() {
+  tableBody.innerHTML = "";
+
+  const term = searchInput.value.trim().toLowerCase();
+  const filtered = students.filter((s) => s.name.toLowerCase().includes(term));
+  const sorted = getSortedStudents(filtered);
+
+  if (sorted.length === 0) {
+    const tr = document.createElement("tr");
+    tr.className = "empty-row";
+    tr.innerHTML = `<td colspan="6">
+      <span class="empty-icon">${students.length === 0 ? "📋" : "🔍"}</span>
+      ${
+        students.length === 0
+          ? "No students added yet. Use the form above to get started."
+          : "No students match your search."
+      }
+    </td>`;
+    tableBody.appendChild(tr);
+  } else {
+    sorted.forEach((student, idx) => {
+      const tr = document.createElement("tr");
+      const gradeClass = getGradeClass(student.grade);
+      const perfColor = getPerformanceColor(student.score);
+
+      tr.innerHTML = `
+        <td class="td-num">${idx + 1}</td>
+        <td class="td-name">${escapeHtml(student.name)}</td>
+        <td class="td-score">${student.score}</td>
+        <td><span class="grade-chip ${gradeClass}">${student.grade}</span></td>
+        <td>
+          <div class="perf-wrap">
+            <div class="perf-track">
+              <div class="perf-fill" style="width:${student.score}%;background:${perfColor}"></div>
+            </div>
+            <span class="perf-num">${student.score}%</span>
+          </div>
+        </td>
+        <td>
+          <button class="btn-del-row" title="Delete student" data-id="${student.id}">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </td>
+      `;
+      tableBody.appendChild(tr);
+    });
+
+    tableBody.querySelectorAll(".btn-del-row").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        deleteStudent(parseInt(btn.dataset.id)),
+      );
+    });
+  }
+
+  updateAnalytics();
+  updateDistribution();
+  updateBadge();
+}
+
+// ─── ANALYTICS ───────────────────────────────────────────────
 function updateAnalytics() {
-  // 1. If the table is empty, reset stats to 0
   if (students.length === 0) {
-    avgScoreEl.textContent = "0";
-    highScoreEl.textContent = "0";
-    lowScoreEl.textContent = "0";
+    avgScoreEl.textContent = "—";
+    highScoreEl.textContent = "—";
+    lowScoreEl.textContent = "—";
+    totalStudentsEl.textContent = "0";
+    passRateEl.textContent = "—";
     return;
   }
 
-  // 2. Extract just the scores into a simple array (e.g.,)
-  const scores = students.map((student) => student.score);
-
-  // 3. Use built-in Math functions to instantly find the highest and lowest
+  const scores = students.map((s) => s.score);
+  const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
   const highest = Math.max(...scores);
   const lowest = Math.min(...scores);
+  const passing = students.filter((s) => s.score >= 60).length;
+  const rate = ((passing / students.length) * 100).toFixed(0) + "%";
 
-  // 4. Calculate average using .reduce() (adds all numbers in the array together)
-  const totalScore = scores.reduce((sum, score) => sum + score, 0);
-  const average = (totalScore / students.length).toFixed(1);
-
-  // 5. Update the DOM
-  avgScoreEl.textContent = average;
+  avgScoreEl.textContent = avg;
   highScoreEl.textContent = highest;
   lowScoreEl.textContent = lowest;
+  totalStudentsEl.textContent = students.length;
+  passRateEl.textContent = rate;
 }
-// Initial Render on Page Load
+
+// ─── DISTRIBUTION ────────────────────────────────────────────
+function updateDistribution() {
+  if (students.length === 0) {
+    distBarsEl.innerHTML =
+      '<p class="dist-empty">Add students to see distribution</p>';
+    return;
+  }
+
+  // Build grade tally
+  const tally = {};
+  const sorted = [...gradeRules].sort((a, b) => b.max - a.max);
+  sorted.forEach((r) => {
+    tally[r.grade] = 0;
+  });
+  students.forEach((s) => {
+    if (tally[s.grade] !== undefined) tally[s.grade]++;
+    else tally[s.grade] = (tally[s.grade] || 0) + 1;
+  });
+
+  const maxCount = Math.max(...Object.values(tally), 1);
+  distBarsEl.innerHTML = "";
+
+  Object.entries(tally).forEach(([grade, count]) => {
+    const pct = Math.round((count / maxCount) * 100);
+    const div = document.createElement("div");
+    div.className = "dist-row";
+    div.innerHTML = `
+      <span class="dist-grade-label">${grade}</span>
+      <div class="dist-track">
+        <div class="dist-fill" style="width:${pct}%"></div>
+      </div>
+      <span class="dist-count">${count}</span>
+    `;
+    distBarsEl.appendChild(div);
+  });
+}
+
+// ─── BADGE ───────────────────────────────────────────────────
+function updateBadge() {
+  const n = students.length;
+  studentBadgeEl.textContent = n === 1 ? "1 student" : `${n} students`;
+}
+
+// ─── CLEAR ALL ───────────────────────────────────────────────
+clearAllBtn.addEventListener("click", () => {
+  if (students.length === 0) {
+    showToast("Nothing to clear.", "error");
+    return;
+  }
+  showConfirm(
+    `Permanently delete all ${students.length} student records? This cannot be undone.`,
+    () => {
+      students = [];
+      saveStudents();
+      renderStudents();
+      showToast("All records cleared.");
+    },
+  );
+});
+
+// ─── EXPORT CSV ──────────────────────────────────────────────
+exportCsvBtn.addEventListener("click", () => {
+  if (students.length === 0) {
+    showToast("No data to export.", "error");
+    return;
+  }
+
+  const sorted = [...students].sort((a, b) => b.score - a.score);
+  let csv = "Rank,Name,Score,Grade\n";
+  sorted.forEach((s, i) => {
+    csv += `${i + 1},"${s.name}",${s.score},${s.grade}\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = Object.assign(document.createElement("a"), {
+    href: url,
+    download: `gradex_results_${new Date().toLocaleDateString("en-GB").replace(/\//g, "-")}.csv`,
+  });
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast("CSV exported successfully.", "success");
+});
+
+// ─── UTILITY ─────────────────────────────────────────────────
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
+document.addEventListener("keydown", (e) => {
+  // Escape closes modal
+  if (e.key === "Escape" && modalOverlay.classList.contains("show")) {
+    modalOverlay.classList.remove("show");
+  }
+  // Ctrl/Cmd + E exports
+  if ((e.ctrlKey || e.metaKey) && e.key === "e") {
+    e.preventDefault();
+    exportCsvBtn.click();
+  }
+  // Focus search on "/"
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT") {
+    e.preventDefault();
+    searchInput.focus();
+  }
+});
+
+// ─── INIT ────────────────────────────────────────────────────
 renderRules();
 renderStudents();
